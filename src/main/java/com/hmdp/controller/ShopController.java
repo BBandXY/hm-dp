@@ -17,6 +17,7 @@ import javax.annotation.Resource;
  * </p>
  *
  * @author 虎哥
+ * @since 2021-12-22
  */
 @RestController
 @RequestMapping("/shop")
@@ -32,6 +33,7 @@ public class ShopController {
      */
     @GetMapping("/{id}")
     public Result queryShopById(@PathVariable("id") Long id) {
+
         return shopService.queryById(id);
     }
 
@@ -56,7 +58,8 @@ public class ShopController {
     @PutMapping
     public Result updateShop(@RequestBody Shop shop) {
         // 写入数据库
-        return shopService.update(shop);
+
+        return  shopService.update(shop);
     }
 
     /**
@@ -69,10 +72,10 @@ public class ShopController {
     public Result queryShopByType(
             @RequestParam("typeId") Integer typeId,
             @RequestParam(value = "current", defaultValue = "1") Integer current,
-            @RequestParam(value = "x", required = false) Double x,
-            @RequestParam(value = "y", required = false) Double y
+            @RequestParam(value = "x",required = false)Double x,
+            @RequestParam(value = "y",required = false)Double y
     ) {
-       return shopService.queryShopByType(typeId, current, x, y);
+       return shopService.queryShopByType(typeId,current,x,y);
     }
 
     /**

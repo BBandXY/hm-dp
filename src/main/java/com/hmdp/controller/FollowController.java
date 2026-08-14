@@ -9,26 +9,26 @@ import javax.annotation.Resource;
 
 /**
  * <p>
- * 前端控制器
+ *  前端控制器
  * </p>
  *
  * @author 虎哥
+ * @since 2021-12-22
  */
 @RestController
 @RequestMapping("/follow")
 public class FollowController {
-
     @Resource
-    private IFollowService followService;
+    private  IFollowService followService;
 
     @PutMapping("/{id}/{isFollow}")
-    public Result follow(@PathVariable("id") Long followUserId, @PathVariable("isFollow") Boolean isFollow) {
-        return followService.follow(followUserId, isFollow);
+    public Result follow(@PathVariable("id") Long followUserId, @PathVariable("isFollow") Boolean isFollow){
+    return followService.follow(followUserId,isFollow);
     }
 
     @GetMapping("/or/not/{id}")
-    public Result isFollow(@PathVariable("id") Long followUserId) {
-        return followService.isFollow(followUserId);
+    public Result isFollow(@PathVariable("id") Long followUserId){
+    return followService.isFollow(followUserId);
     }
 
     @GetMapping("/common/{id}")

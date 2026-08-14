@@ -31,3 +31,14 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Local configuration and secrets ###
+.env
+.env.*
+!.env.example
+src/main/resources/application-local.yaml
+
+### Runtime data and personal documents ###
+data/
+logs/
+*.docx

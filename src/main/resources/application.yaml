@@ -1,17 +1,17 @@
 server:
-  port: 8081
+  port: ${SERVER_PORT:8081}
 spring:
   application:
     name: hmdp
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/hmdp?useSSL=false&serverTimezone=UTC
-    username: root
-    password: 123
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/hmdp?useSSL=false&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
   redis:
-    host: 192.168.150.101
-    port: 6379
-    password: 123321
+    host: ${REDIS_HOST:127.0.0.1}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
     lettuce:
       pool:
         max-active: 10
@@ -24,6 +24,4 @@ mybatis-plus:
   type-aliases-package: com.hmdp.entity # 别名扫描包
 logging:
   level:
-    com.hmdp: debug
-  pattern:
-    dateformat: mm:ss.SSS
+    com.hmdp: ${LOG_LEVEL:info}
