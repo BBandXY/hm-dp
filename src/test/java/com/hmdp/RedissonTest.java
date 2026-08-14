@@ -2,6 +2,7 @@ package com.hmdp;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -12,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @SpringBootTest
+@Disabled("集成测试，需要可用的 Redis")
 class RedissonTest {
 
     @Resource

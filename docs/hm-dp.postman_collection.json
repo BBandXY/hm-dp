@@ -1,0 +1,93 @@
+{
+  "info": {
+    "name": "HM-DP Phase 1",
+    "description": "HM-DP 可靠性与安全阶段接口集合",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8081" },
+    { "key": "phone", "value": "13800138000" },
+    { "key": "code", "value": "" },
+    { "key": "token", "value": "" },
+    { "key": "shopId", "value": "1" },
+    { "key": "voucherId", "value": "1" },
+    { "key": "orderId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Send login code",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/user/code?phone={{phone}}"
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"code\": \"{{code}}\"\n}"
+            },
+            "url": "{{baseUrl}}/user/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public queries",
+      "item": [
+        {
+          "name": "Get shop",
+          "request": { "method": "GET", "url": "{{baseUrl}}/shop/{{shopId}}" }
+        },
+        {
+          "name": "List shop vouchers",
+          "request": { "method": "GET", "url": "{{baseUrl}}/voucher/list/{{shopId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Seckill order",
+      "item": [
+        {
+          "name": "Create seckill order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "authorization", "value": "{{token}}" }],
+            "url": "{{baseUrl}}/voucher-order/seckill/{{voucherId}}"
+          }
+        },
+        {
+          "name": "Query asynchronous order status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "authorization", "value": "{{token}}" }],
+            "url": "{{baseUrl}}/voucher-order/status/{{orderId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Protected management writes",
+      "item": [
+        {
+          "name": "Update shop",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "authorization", "value": "{{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"id\": {{shopId}},\n  \"name\": \"updated shop\"\n}" },
+            "url": "{{baseUrl}}/shop"
+          }
+        }
+      ]
+    }
+  ]
+}

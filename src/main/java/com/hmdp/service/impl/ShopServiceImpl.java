@@ -23,6 +23,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.domain.geo.GeoReference;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import javax.annotation.Resource;
 
@@ -202,9 +204,16 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         if (id == null){
             return Result.fail("店铺id不能为空");
         }
-        updateById(shop);
-
-        stringRedisTemplate.delete(CACHE_SHOP_KEY+id);
+        boolean updated = updateById(shop);
+        if (!updated) {
+            return Result.fail("店铺不存在或更新失败");
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                stringRedisTemplate.delete(CACHE_SHOP_KEY + id);
+            }
+        });
         return Result.ok();
     }
 

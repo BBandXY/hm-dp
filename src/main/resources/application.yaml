@@ -20,8 +20,20 @@ spring:
         time-between-eviction-runs: 10s
   jackson:
     default-property-inclusion: non_null # JSON处理时忽略非空字段
+  servlet:
+    multipart:
+      max-file-size: ${MAX_UPLOAD_SIZE:5MB}
+      max-request-size: ${MAX_UPLOAD_REQUEST_SIZE:6MB}
 mybatis-plus:
   type-aliases-package: com.hmdp.entity # 别名扫描包
 logging:
   level:
     com.hmdp: ${LOG_LEVEL:info}
+hmdp:
+  seckill:
+    consumer-name: ${SECKILL_CONSUMER_NAME:c1}
+    max-retries: ${SECKILL_MAX_RETRIES:5}
+    reconcile-initial-delay-ms: ${SECKILL_RECONCILE_INITIAL_DELAY_MS:30000}
+    reconcile-delay-ms: ${SECKILL_RECONCILE_DELAY_MS:60000}
+    reconcile-grace-ms: ${SECKILL_RECONCILE_GRACE_MS:60000}
+    reconcile-batch-size: ${SECKILL_RECONCILE_BATCH_SIZE:100}

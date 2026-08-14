@@ -59,7 +59,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements  I
         String code = RandomUtil.randomNumbers(6);
         //保存验证码
         stringRedisTemplate.opsForValue().set(LOGIN_CODE_KEY + phone,code,LOGIN_CODE_TTL, TimeUnit.MINUTES);
-        log.debug("发送成功，验证码：{}",code);
+        log.info("登录验证码已生成并写入缓存，手机号尾号={}", phone.substring(phone.length() - 4));
         //返回
         return Result.ok();
     }
@@ -93,6 +93,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements  I
                                         .setFieldValueEditor((fieldName, fieldValue) -> fieldValue.toString()));
         stringRedisTemplate.opsForHash().putAll( LOGIN_USER_KEY+token, userMap);
         stringRedisTemplate.expire(LOGIN_USER_KEY+token,LOGIN_USER_TTL,TimeUnit.SECONDS);
+        stringRedisTemplate.delete(LOGIN_CODE_KEY + phone);
         return Result.ok(token);
     }
 

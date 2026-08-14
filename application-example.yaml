@@ -1,0 +1,22 @@
+server:
+  port: 8081
+spring:
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/hmdp?useSSL=false&serverTimezone=UTC
+    username: root
+    password: change-me
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    password: ""
+logging:
+  level:
+    com.hmdp: info
+hmdp:
+  seckill:
+    consumer-name: c1
+    max-retries: 5
+    reconcile-delay-ms: 60000
+    reconcile-grace-ms: 60000
+    reconcile-batch-size: 100

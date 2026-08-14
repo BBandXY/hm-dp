@@ -3,6 +3,7 @@ package com.hmdp.controller;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.hmdp.annotation.PublicEndpoint;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.Shop;
 import com.hmdp.service.IShopService;
@@ -32,6 +33,7 @@ public class ShopController {
      * @return 商铺详情数据
      */
     @GetMapping("/{id}")
+    @PublicEndpoint
     public Result queryShopById(@PathVariable("id") Long id) {
 
         return shopService.queryById(id);
@@ -69,6 +71,7 @@ public class ShopController {
      * @return 商铺列表
      */
     @GetMapping("/of/type")
+    @PublicEndpoint
     public Result queryShopByType(
             @RequestParam("typeId") Integer typeId,
             @RequestParam(value = "current", defaultValue = "1") Integer current,
@@ -85,6 +88,7 @@ public class ShopController {
      * @return 商铺列表
      */
     @GetMapping("/of/name")
+    @PublicEndpoint
     public Result queryShopByName(
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "current", defaultValue = "1") Integer current

@@ -2,6 +2,7 @@ package com.hmdp.controller;
 
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.hmdp.annotation.PublicEndpoint;
 import com.hmdp.dto.Result;
 import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.Blog;
@@ -55,18 +56,21 @@ public class BlogController {
     }
 
     @GetMapping("/hot")
+    @PublicEndpoint
     public Result queryHotBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
         return blogService.queryHotBlog(current);
     }
 
 
     @GetMapping("/{id}")
+    @PublicEndpoint
     public Result quryBlogById(@PathVariable("id") Long id){
         return blogService.queryBlogById(id);
 
     }
 
     @GetMapping("likes/{id}")
+    @PublicEndpoint
     public Result quryBlogLikes(@PathVariable("id") Long id){
         return blogService.queryBlogLikes(id);
 
@@ -74,6 +78,7 @@ public class BlogController {
 
 
     @GetMapping("/of/user")
+    @PublicEndpoint
     public Result queryBlogByUserId(
             @RequestParam(value = "current", defaultValue = "1") Integer current,
             @RequestParam("id") Long id) {

@@ -4,6 +4,7 @@ import com.hmdp.entity.Shop;
 import com.hmdp.service.impl.ShopServiceImpl;
 import com.hmdp.utils.CacheClient;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Disabled;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.geo.Point;
 import org.springframework.data.redis.connection.RedisGeoCommands;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 import static com.hmdp.utils.RedisConstants.CACHE_SHOP_KEY;
 
 @SpringBootTest
+@Disabled("手工数据初始化测试，需要本地 MySQL 和 Redis")
 class HmDianPingApplicationTests {
 
     @Resource

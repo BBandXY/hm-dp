@@ -1,6 +1,7 @@
 package com.hmdp.controller;
 
 
+import com.hmdp.annotation.PublicEndpoint;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.ShopType;
 import com.hmdp.service.IShopTypeService;
@@ -26,6 +27,7 @@ public class ShopTypeController {
     private IShopTypeService typeService;
 
     @GetMapping("list")
+    @PublicEndpoint
     public Result queryTypeList() {
 
         return typeService.queryAll();
