@@ -19,13 +19,13 @@ spring:
         min-idle: 1
         time-between-eviction-runs: 10s
   jackson:
-    default-property-inclusion: non_null # JSON处理时忽略非空字段
+    default-property-inclusion: non_null # JSON处理时忽略空字段
   servlet:
     multipart:
       max-file-size: ${MAX_UPLOAD_SIZE:5MB}
       max-request-size: ${MAX_UPLOAD_REQUEST_SIZE:6MB}
 mybatis-plus:
-  type-aliases-package: com.hmdp.entity # 别名扫描包
+  type-aliases-package: com.hmdp.entity
 logging:
   level:
     com.hmdp: ${LOG_LEVEL:info}
@@ -37,3 +37,8 @@ hmdp:
     reconcile-delay-ms: ${SECKILL_RECONCILE_DELAY_MS:60000}
     reconcile-grace-ms: ${SECKILL_RECONCILE_GRACE_MS:60000}
     reconcile-batch-size: ${SECKILL_RECONCILE_BATCH_SIZE:100}
+  marketing:
+    consumer-name: ${MARKETING_CONSUMER_NAME:marketing-c1}
+    max-retries: ${MARKETING_MAX_RETRIES:5}
+    publish-retry-ms: ${MARKETING_PUBLISH_RETRY_MS:5000}
+    expire-cron: "${MARKETING_EXPIRE_CRON:0 5 * * * ?}"

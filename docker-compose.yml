@@ -13,6 +13,7 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./src/main/resources/db/hmdp.sql:/docker-entrypoint-initdb.d/01-hmdp.sql:ro
+      - ./src/main/resources/db/migration/V2__marketing_task_voucher_loop.sql:/docker-entrypoint-initdb.d/02-marketing.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD:-hmdp-dev}"]
       interval: 10s

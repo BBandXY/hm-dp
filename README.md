@@ -33,6 +33,24 @@ flowchart LR
 - 定时任务核对死信订单：数据库已有订单则修正状态，否则幂等归还 Redis 预扣库存。
 - 秒杀接口返回订单 ID，客户端可轮询 `GET /voucher-order/status/{orderId}`。
 
+## 每日任务—优惠券营销闭环
+
+签到、首次登录、发布笔记和点赞会推进每日/一次性任务。任务完成后可领取积分、满减券或秒杀资格券：
+
+```mermaid
+flowchart LR
+    A["签到/登录/笔记/点赞"] --> B["任务事件业务幂等"]
+    B --> C["MySQL 原子更新进度"]
+    C --> D["用户提交 requestId 领奖"]
+    D --> E["Lua 校验库存和一人一券"]
+    E --> F["Redis Stream 异步发券"]
+    F --> G["MySQL 唯一索引最终防重"]
+```
+
+券奖励使用本地发券日志保证可靠发布；消费者支持 Pending 重试、死信与幂等库存补偿。每日任务以 `task_date` 分区自然重置，定时任务负责用户券和模板过期。营销任务事件采用 fail-safe 门面，营销系统异常不会使登录、签到和笔记主流程失败。
+
+接口、状态说明和已有数据库升级步骤见 [营销闭环文档](docs/marketing-task-voucher.md)。
+
 ## 缓存策略
 
 店铺详情使用逻辑过期和 stale-while-revalidate：
@@ -64,7 +82,7 @@ flowchart LR
 docker compose up --build
 ```
 
-Compose 会启动 MySQL、Redis 和应用，并在首次创建 MySQL 数据卷时导入 `src/main/resources/db/hmdp.sql`。默认访问地址为 `http://localhost:8081`。
+Compose 会启动 MySQL、Redis 和应用，并在首次创建 MySQL 数据卷时依次导入基础库与营销模块脚本。默认访问地址为 `http://localhost:8081`。
 
 如果已经存在旧数据卷且订单表没有唯一索引，需要手工执行：
 
@@ -73,11 +91,15 @@ ALTER TABLE tb_voucher_order
     ADD UNIQUE KEY uk_user_voucher (user_id, voucher_id);
 ```
 
-迁移脚本位于 `src/main/resources/db/migration/V1__voucher_order_unique_index.sql`。
+然后执行营销模块迁移：
+
+```text
+src/main/resources/db/migration/V2__marketing_task_voucher_loop.sql
+```
 
 ### 本地启动
 
-1. 准备 MySQL 与 Redis，导入 `src/main/resources/db/hmdp.sql`。
+1. 准备 MySQL 与 Redis，依次导入 `src/main/resources/db/hmdp.sql` 和营销模块 V2 迁移脚本。
 2. 参考 `.env.example` 配置环境变量，不要把真实密码提交到 Git。
 3. 执行：
 
@@ -97,6 +119,8 @@ mvn clean test
 
 - 秒杀订单事务的幂等处理、库存扣减和库存不足分支。
 - 店铺缓存首次未命中时的数据库回源与逻辑缓存初始化。
+- 任务事件业务幂等与进度累加。
+- 异步发券事务的数据库库存扣减和用户券防重。
 
 依赖真实 MySQL/Redis 的数据预热测试已明确标记为手工集成测试，默认不会污染本机环境。
 
