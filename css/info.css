@@ -78,8 +78,40 @@
 .introduce{
     padding: 0 15px;
 }
+.marketing-entry{
+    height: 7%;
+    margin: 8px 15px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    border-radius: 5px;
+    background-color: #fff;
+    box-shadow: 0 2px 5px 1px rgba(0, 0, 0, 0.08);
+}
+.marketing-entry-icon{
+    width: 10%;
+    color: #ff6633;
+    font-size: 24px;
+}
+.marketing-entry-info{
+    width: 58%;
+}
+.marketing-entry-title{
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 20px;
+}
+.marketing-entry-desc{
+    color: #82848a;
+    font-size: 10px;
+}
+.marketing-entry-points{
+    width: 32%;
+    text-align: right;
+    color: #ff6633;
+}
 .content {
-    height: 61%;
+    height: 52%;
 }
 
 .edit-container{

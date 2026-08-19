@@ -83,7 +83,8 @@
     el: "#app",
     data: {
       util,
-      isReachBottom: false,
+      loadingShops: false,
+      noMoreShops: false,
       types: [], // 类型列表
       shops: [], // 商店列表
       typeName: "",
@@ -116,17 +117,45 @@
           })
       },
       queryShops() {
+        if (this.loadingShops || this.noMoreShops) {
+          return;
+        }
+        this.loadingShops = true;
+        const requestPage = this.params.current;
         axios.get("/shop/of/type", {
-            params: this.params
+            // 复制参数，避免滚动过程中 current 改变影响已经发出的请求。
+            params: Object.assign({}, this.params)
           })
           .then(({data}) => {
-            if (!data) {
-              return
+            const pageData = Array.isArray(data) ? data : [];
+            pageData.forEach(s => {
+              if (s.images) {
+                s.images = s.images.split(',')[0];
+              }
+            });
+
+            // 接口正常情况下不会返回重复数据，这里按 id 再做一层防御性去重。
+            const existingIds = new Set(this.shops.map(shop => String(shop.id)));
+            const newShops = pageData.filter(shop => {
+              const shopId = String(shop.id);
+              if (existingIds.has(shopId)) {
+                return false;
+              }
+              existingIds.add(shopId);
+              return true;
+            });
+            this.shops = this.shops.concat(newShops);
+            if (pageData.length < 5) {
+              this.noMoreShops = true;
             }
-            data.forEach(s => s.images = s.images.split(',')[0]);
-            this.shops = this.shops.concat(data);
+            this.loadingShops = false;
           })
           .catch(err => {
+            // 当前页失败时回退页码，下一次滚动仍然重试这一页，避免直接跳页。
+            if (requestPage > 1 && this.params.current === requestPage) {
+              this.params.current--;
+            }
+            this.loadingShops = false;
             console.log(err);
             this.$message.error(err)
           })
@@ -135,7 +164,13 @@
         location.href = "/shop-list.html?type="+t.id+"&name="+t.name;
       },
       sortAndQuery(sortBy) {
+        if (this.loadingShops) {
+          return;
+        }
         this.params.sortBy = sortBy;
+        this.params.current = 1;
+        this.shops = [];
+        this.noMoreShops = false;
         this.queryShops();
       },
       goBack() {
@@ -148,13 +183,11 @@
         let scrollTop = e.target.scrollTop;
         let offsetHeight = e.target.offsetHeight;
         let scrollHeight = e.target.scrollHeight;
-        if(scrollTop + offsetHeight + 1 > scrollHeight && !this.isReachBottom){
-          this.isReachBottom = true
+        if(scrollTop + offsetHeight + 1 > scrollHeight
+          && !this.loadingShops && !this.noMoreShops){
           console.log("触底")
           this.params.current++
-          this.queryShops(this.params.current, 5);
-        }else{
-          this.isReachBottom = false
+          this.queryShops();
         }
       },
     }

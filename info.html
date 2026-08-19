@@ -55,6 +55,16 @@
     <span v-if="info.introduce"></span>
     <span v-else>添加个人简介，让大家更好的认识你 <i class="el-icon-edit"></i></span>
   </div>
+  <div class="marketing-entry" @click="toMarketing">
+    <div class="marketing-entry-icon"><i class="el-icon-present"></i></div>
+    <div class="marketing-entry-info">
+      <div class="marketing-entry-title">任务中心</div>
+      <div class="marketing-entry-desc">完成每日任务，领取积分和优惠券</div>
+    </div>
+    <div class="marketing-entry-points">
+      {{points}} 积分 <i class="el-icon-arrow-right"></i>
+    </div>
+  </div>
   <div class="content">
     <el-tabs v-model="activeName" @tab-click="handleClick">
       <el-tab-pane label="笔记" name="1">
@@ -109,6 +119,7 @@
       info: {},
       blogs: [],
       blogs2: [], // 关注的人的播客
+      points: 0,
       params: {
         minTime: 0, // 上一次拉取到的时间戳
         offset: 0, // 偏移量
@@ -158,6 +169,8 @@
             this.queryUserInfo();
             // 查询用户笔记
             this.queryBlogs();
+            // 查询积分，用于任务中心入口展示
+            this.queryMarketingPoints();
           })
           .catch(err => {
             location.href = "login.html"
@@ -183,6 +196,14 @@
       },
       toEdit() {
         location.href = 'info-edit.html'
+      },
+      queryMarketingPoints() {
+        axios.get("/marketing/points")
+          .then(({data}) => this.points = data.balance || 0)
+          .catch(err => console.log(err))
+      },
+      toMarketing() {
+        location.href = '/task-center.html'
       },
       logout() {
         axios.post("/user/logout")

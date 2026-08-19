@@ -25,7 +25,7 @@
         <div style="display: flex; justify-content: space-between">
           <el-input style="width: 60%" placeholder="请输入手机号" v-model="form.phone" >
           </el-input>
-          <el-button style="width: 38%" @click="sendCode" type="success" :disabled="disabled">{{codeBtnMsg}}</el-button>
+          <el-button style="width: 38%" @click="sendCode" native-type="button" type="success" :disabled="disabled">{{codeBtnMsg}}</el-button>
         </div>
 
         <div style="height: 5px"></div>
@@ -83,8 +83,8 @@
               // 保存用户信息到session
               sessionStorage.setItem("token", data);
             }
-            // 跳转到首页
-            location.href = "/index.html"
+            // 跳转到个人页
+            location.href = "/info.html"
         })
         .catch(err => this.$message.error(err))
       },

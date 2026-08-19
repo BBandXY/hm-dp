@@ -24,12 +24,18 @@ axios.interceptors.response.use(function (response) {
 }, function (error) {
   // 一般是服务端异常或者网络异常
   console.log(error)
-  if(error.response.status == 401){
+  if(error.response && error.response.status === 401){
     // 未登录，跳转
     setTimeout(() => {
       location.href = "/login.html"
     }, 200);
     return Promise.reject("请先登录");
+  }
+  if(error.code === "ECONNABORTED"){
+    return Promise.reject("请求超时，请稍后重试");
+  }
+  if(!error.response){
+    return Promise.reject("网络异常，请检查服务是否启动");
   }
   return Promise.reject("服务器异常");
 });
