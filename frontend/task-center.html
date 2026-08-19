@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+  <title>黑马点评</title>
+  <!-- 引入样式 -->
+  <link rel="stylesheet" href="./css/element.css">
+  <link href="./css/main.css" rel="stylesheet">
+  <link href="./css/task-center.css" rel="stylesheet">
+  <style type="text/css">
+      .el-tabs, .el-tab-pane {
+          height: 100%;
+      }
+
+      .el-tabs__header {
+          height: 10%;
+          margin: 0;
+      }
+
+      .el-tabs__content {
+          height: 90%;
+      }
+  </style>
+</head>
+
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-back-btn" @click="goBack"><i class="el-icon-arrow-left"></i></div>
+    <div class="header-title">任务中心&nbsp;&nbsp;&nbsp;</div>
+  </div>
+
+  <div class="asset-panel">
+    <div class="asset-item">
+      <div class="asset-value">{{points}}</div>
+      <div class="asset-label">我的积分</div>
+    </div>
+    <div class="asset-divider"></div>
+    <div class="asset-item">
+      <div class="asset-value">{{unusedVoucherCount}}</div>
+      <div class="asset-label">可用优惠券</div>
+    </div>
+  </div>
+
+  <div class="marketing-content">
+    <el-tabs v-model="activeName">
+      <el-tab-pane label="每日任务" name="tasks">
+        <div class="task-list">
+          <div class="empty-tip" v-if="tasks.length === 0 && !loadingTasks">暂无可用任务</div>
+          <div class="task-item" v-for="task in tasks" :key="task.taskId">
+            <div class="task-info">
+              <div class="task-title">{{task.taskName}}</div>
+              <div class="task-reward">奖励：{{taskRewardText(task)}}</div>
+              <div class="task-progress-row">
+                <div class="task-progress">
+                  <div class="task-progress-value" :style="{width: taskProgressWidth(task)}"></div>
+                </div>
+                <div class="task-progress-text">{{task.progress}}/{{task.targetValue}}</div>
+              </div>
+            </div>
+            <div class="task-btn"
+                 :class="{disabled: task.rewardReceived || isRewardPending(task) || task.claiming}"
+                 @click="handleTask(task)">
+              {{taskActionText(task)}}
+            </div>
+          </div>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="我的优惠券" name="vouchers">
+        <div class="voucher-list">
+          <div class="empty-tip" v-if="vouchers.length === 0 && !loadingVouchers">暂无优惠券</div>
+          <div class="voucher-item" v-for="voucher in vouchers" :key="voucher.source + ':' + voucher.id">
+            <div class="voucher-value">
+              <div class="voucher-amount">{{voucherMainText(voucher)}}</div>
+              <div class="voucher-condition">{{voucherCondition(voucher)}}</div>
+            </div>
+            <div class="voucher-info">
+              <div class="voucher-name">
+                {{voucher.name}}
+                <span class="voucher-source-tag" v-if="isSeckillOrder(voucher)">限时抢购</span>
+              </div>
+              <div class="voucher-expire" v-if="isSeckillOrder(voucher)">
+                抢购时间 {{formatTime(voucher.receiveTime)}}
+              </div>
+              <div class="voucher-expire" v-else>有效期至 {{formatTime(voucher.expireTime)}}</div>
+            </div>
+            <div class="voucher-status" :class="{unavailable: voucher.status !== 'UNUSED'}">
+              {{voucherStatusText(voucher.status)}}
+            </div>
+          </div>
+        </div>
+      </el-tab-pane>
+    </el-tabs>
+  </div>
+</div>
+
+<script src="./js/vue.js"></script>
+<script src="./js/axios.min.js"></script>
+<!-- 引入组件库 -->
+<script src="./js/element.js"></script>
+<script src="./js/common.js"></script>
+<script>
+  const app = new Vue({
+    el: "#app",
+    data: {
+      activeName: "tasks",
+      points: 0,
+      tasks: [],
+      vouchers: [],
+      loadingTasks: true,
+      loadingVouchers: true,
+      pollingTask: null,
+    },
+    computed: {
+      unusedVoucherCount() {
+        return this.vouchers.filter(v => v.status === "UNUSED").length;
+      }
+    },
+    created() {
+      this.queryTasks();
+      this.queryPoints();
+      this.queryVouchers();
+    },
+    beforeDestroy() {
+      this.stopPolling();
+    },
+    methods: {
+      goBack() {
+        history.back();
+      },
+      queryTasks() {
+        axios.get("/marketing/tasks")
+          .then(({data}) => {
+            const taskList = Array.isArray(data) ? data : [];
+            taskList.forEach(task => {
+              this.$set(task, "claiming", false);
+              if (!task.rewardRequestId) {
+                sessionStorage.removeItem(this.rewardStorageKey(task));
+              }
+            });
+            this.tasks = taskList;
+            this.loadingTasks = false;
+            if (taskList.some(task => this.isRewardPending(task))) {
+              this.startPolling();
+            } else {
+              this.stopPolling();
+            }
+          })
+          .catch(err => {
+            this.loadingTasks = false;
+            this.$message.error(err);
+          })
+      },
+      queryPoints() {
+        axios.get("/marketing/points")
+          .then(({data}) => this.points = data && data.balance ? data.balance : 0)
+          .catch(err => this.$message.error(err))
+      },
+      queryVouchers() {
+        axios.get("/marketing/vouchers")
+          .then(({data}) => {
+            this.vouchers = Array.isArray(data) ? data : [];
+            this.loadingVouchers = false;
+          })
+          .catch(err => {
+            this.loadingVouchers = false;
+            this.$message.error(err);
+          })
+      },
+      handleTask(task) {
+        if (task.rewardReceived || this.isRewardPending(task) || task.claiming) {
+          return;
+        }
+        if (!task.completed) {
+          this.goToTask(task);
+          return;
+        }
+        this.claimReward(task);
+      },
+      claimReward(task) {
+        let requestId = sessionStorage.getItem(this.rewardStorageKey(task));
+        if (!requestId) {
+          requestId = this.createRequestId(task.taskId);
+          sessionStorage.setItem(this.rewardStorageKey(task), requestId);
+        }
+        task.claiming = true;
+        axios.post("/marketing/tasks/" + task.taskId + "/reward", {requestId})
+          .then(({data}) => {
+            task.rewardRequestId = data.requestId;
+            task.rewardStatus = data.status;
+            if (data.status === "SUCCESS") {
+              this.$message.success(data.message || "奖励已领取");
+              sessionStorage.removeItem(this.rewardStorageKey(task));
+              this.queryPoints();
+              this.queryVouchers();
+            } else if (data.status === "FAILED") {
+              sessionStorage.removeItem(this.rewardStorageKey(task));
+              this.$message.error(data.message || "奖励发放失败，请重新领取");
+            } else {
+              this.$message.success(data.message || "奖励已受理");
+              this.startPolling();
+            }
+            this.queryTasks();
+            task.claiming = false;
+          })
+          .catch(err => {
+            task.claiming = false;
+            this.$message.error(err);
+          })
+      },
+      queryRewardGrant(task) {
+        axios.get("/marketing/reward-grants/" + encodeURIComponent(task.rewardRequestId))
+          .then(({data}) => {
+            task.rewardStatus = data.status;
+            if (data.status === "SUCCESS") {
+              task.rewardReceived = true;
+              sessionStorage.removeItem(this.rewardStorageKey(task));
+              this.$message.success(data.message || "优惠券已到账");
+              this.queryTasks();
+              this.queryVouchers();
+            } else if (data.status === "FAILED") {
+              sessionStorage.removeItem(this.rewardStorageKey(task));
+              this.$message.error(data.message || "奖励发放失败，请重新领取");
+              this.queryTasks();
+            }
+          })
+          .catch(err => console.log("查询奖励状态失败", err))
+      },
+      goToTask(task) {
+        if (task.taskCode === "DAILY_SIGN" || task.taskCode === "CONTINUOUS_SIGN_7") {
+          axios.post("/user/sign")
+            .then(() => {
+              this.$message.success("签到成功");
+              this.queryTasks();
+            })
+            .catch(err => this.$message.error(err));
+          return;
+        }
+        if (task.taskCode === "PUBLISH_BLOG") {
+          location.href = "/blog-edit.html";
+          return;
+        }
+        location.href = "/";
+      },
+      taskRewardText(task) {
+        if (task.rewardType === "POINTS") {
+          return task.rewardValue + "积分";
+        }
+        if (task.rewardType === "SECKILL_QUALIFICATION") {
+          return "秒杀券领取资格";
+        }
+        return "优惠券";
+      },
+      taskActionText(task) {
+        if (task.claiming) {
+          return "领取中";
+        }
+        if (task.rewardReceived) {
+          return "已领取";
+        }
+        if (this.isRewardPending(task)) {
+          return "发放中";
+        }
+        if (task.completed) {
+          return "领取";
+        }
+        if (task.taskCode === "DAILY_SIGN" || task.taskCode === "CONTINUOUS_SIGN_7") {
+          return "签到";
+        }
+        return "去完成";
+      },
+      taskProgressWidth(task) {
+        if (!task.targetValue) {
+          return "0%";
+        }
+        return Math.min(task.progress * 100 / task.targetValue, 100) + "%";
+      },
+      isRewardPending(task) {
+        return !!task.rewardRequestId
+          && !task.rewardReceived
+          && task.rewardStatus !== "FAILED";
+      },
+      voucherMainText(voucher) {
+        if (this.isSeckillOrder(voucher)) {
+          return "￥" + util.formatPrice(voucher.actualAmount || 0);
+        }
+        if (voucher.voucherType === "SECKILL_QUALIFICATION") {
+          return "秒杀资格";
+        }
+        return "￥" + util.formatPrice(voucher.discountAmount);
+      },
+      voucherCondition(voucher) {
+        if (this.isSeckillOrder(voucher)) {
+          return "抢购价 ￥" + util.formatPrice(voucher.payAmount || 0);
+        }
+        if (voucher.voucherType === "SECKILL_QUALIFICATION") {
+          return "指定活动可用";
+        }
+        if (!voucher.thresholdAmount) {
+          return "无门槛";
+        }
+        return "满" + util.formatPrice(voucher.thresholdAmount) + "元可用";
+      },
+      voucherStatusText(status) {
+        if (status === "UNUSED") {
+          return "可使用";
+        }
+        if (status === "USED") {
+          return "已使用";
+        }
+        if (status === "PENDING_PAYMENT") {
+          return "待支付";
+        }
+        if (status === "CANCELLED") {
+          return "已取消";
+        }
+        if (status === "REFUNDING") {
+          return "退款中";
+        }
+        if (status === "REFUNDED") {
+          return "已退款";
+        }
+        if (status === "EXPIRED") {
+          return "已过期";
+        }
+        return "状态未知";
+      },
+      isSeckillOrder(voucher) {
+        return voucher && voucher.source === "SECKILL_ORDER";
+      },
+      formatTime(value) {
+        if (!value) {
+          return "长期有效";
+        }
+        return value.replace("T", " ");
+      },
+      rewardStorageKey(task) {
+        let now = new Date();
+        let month = now.getMonth() + 1;
+        let day = now.getDate();
+        month = month < 10 ? "0" + month : month;
+        day = day < 10 ? "0" + day : day;
+        return "marketing:reward:" + task.taskId + ":" + now.getFullYear() + month + day;
+      },
+      createRequestId(taskId) {
+        return "task_" + taskId + "_" + new Date().getTime() + "_" + Math.random().toString(36).substring(2, 10);
+      },
+      pollRewardGrants() {
+        const pendingTasks = this.tasks.filter(task => this.isRewardPending(task));
+        if (pendingTasks.length === 0) {
+          this.stopPolling();
+          return;
+        }
+        pendingTasks.forEach(task => this.queryRewardGrant(task));
+      },
+      startPolling() {
+        if (this.pollingTask) {
+          return;
+        }
+        this.pollingTask = setInterval(() => {
+          this.pollRewardGrants();
+        }, 3000);
+      },
+      stopPolling() {
+        if (!this.pollingTask) {
+          return;
+        }
+        clearInterval(this.pollingTask);
+        this.pollingTask = null;
+      }
+    }
+  })
+</script>
+</body>
+
+</html>
