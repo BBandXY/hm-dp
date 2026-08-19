@@ -20,3 +20,10 @@ hmdp:
     reconcile-delay-ms: 60000
     reconcile-grace-ms: 60000
     reconcile-batch-size: 100
+  blog-like:
+    flush-delay-ms: 1000
+    batch-size: 200
+    reconcile-delay-ms: 60000
+    reconcile-interval-ms: 600000
+    reconcile-batch-size: 200
+    sync-log-retention-days: 7

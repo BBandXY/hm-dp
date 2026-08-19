@@ -42,3 +42,13 @@ hmdp:
     max-retries: ${MARKETING_MAX_RETRIES:5}
     publish-retry-ms: ${MARKETING_PUBLISH_RETRY_MS:5000}
     expire-cron: "${MARKETING_EXPIRE_CRON:0 5 * * * ?}"
+  blog-like:
+    flush-initial-delay-ms: ${BLOG_LIKE_FLUSH_INITIAL_DELAY_MS:5000}
+    flush-delay-ms: ${BLOG_LIKE_FLUSH_DELAY_MS:1000}
+    batch-size: ${BLOG_LIKE_BATCH_SIZE:200}
+    reconcile-initial-delay-ms: ${BLOG_LIKE_RECONCILE_INITIAL_DELAY_MS:30000}
+    reconcile-delay-ms: ${BLOG_LIKE_RECONCILE_DELAY_MS:60000}
+    reconcile-interval-ms: ${BLOG_LIKE_RECONCILE_INTERVAL_MS:600000}
+    reconcile-batch-size: ${BLOG_LIKE_RECONCILE_BATCH_SIZE:200}
+    sync-log-retention-days: ${BLOG_LIKE_SYNC_LOG_RETENTION_DAYS:7}
+    sync-log-cleanup-cron: "${BLOG_LIKE_SYNC_LOG_CLEANUP_CRON:0 30 3 * * ?}"

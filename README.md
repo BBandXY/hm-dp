@@ -51,6 +51,32 @@ flowchart LR
 
 接口、状态说明和已有数据库升级步骤见 [营销闭环文档](docs/marketing-task-voucher.md)。
 
+## 异步点赞计数
+
+点赞请求不再同步更新 `tb_blog.liked`。一次 Lua 会原子切换用户点赞关系，并把同一篇笔记在本周期内的变化聚合为净增量：
+
+```mermaid
+flowchart LR
+    A["点赞/取消请求"] --> B["Lua 更新关系 ZSet"]
+    B --> C["Hash 聚合 blogId 净增量"]
+    C --> D["定时任务原子切出 processing 批次"]
+    D --> E["事务内记录 batch_id 并批量更新 MySQL"]
+    E --> F["条件 ACK"]
+    F --> G["低频绝对值对账"]
+```
+
+关键 Redis 数据：
+
+- `blog:liked:{blogId}`：用户点赞关系与点赞时间。
+- `blog:liked:delta`：尚未切批的 `blogId -> 净变化量`。
+- `blog:liked:dirty`：有待刷新增量的 blogId 队列。
+- `blog:liked:delta:processing`：当前有限大小的落库快照。
+- `blog:liked:count`、`blog:liked:baseline`：实时逻辑计数及历史基线，供详情展示和对账使用。
+
+快速点赞、取消、再点赞会合并为净变化；MySQL 的 `tb_blog_like_sync_batch.batch_id` 唯一键防止重复批次再次累加；数据库失败时不 ACK，下一周期自动重试；多实例使用 Redisson 锁减少重复工作，同时由原子切批和条件 ACK 保证锁异常时的安全性。低频对账只处理没有 pending/processing 增量的笔记，避免绝对值覆盖与增量落库互相干扰。
+
+Compose 为 Redis 开启 AOF `everysec` 和数据卷。生产环境仍应监控 AOF 与备份；Redis 点赞关系本身若被整体删除，仅凭 MySQL 聚合计数无法还原具体用户关系。
+
 ## 缓存策略
 
 店铺详情使用逻辑过期和 stale-while-revalidate：
@@ -82,7 +108,7 @@ flowchart LR
 docker compose up --build
 ```
 
-Compose 会启动 MySQL、Redis 和应用，并在首次创建 MySQL 数据卷时依次导入基础库与营销模块脚本。默认访问地址为 `http://localhost:8081`。
+Compose 会启动 MySQL、Redis 和应用，并在首次创建 MySQL 数据卷时依次导入基础库、营销模块和异步点赞脚本。默认访问地址为 `http://localhost:8081`。
 
 如果已经存在旧数据卷且订单表没有唯一索引，需要手工执行：
 
@@ -97,9 +123,15 @@ ALTER TABLE tb_voucher_order
 src/main/resources/db/migration/V2__marketing_task_voucher_loop.sql
 ```
 
+以及异步点赞计数迁移：
+
+```text
+src/main/resources/db/migration/V3__async_blog_like_counter.sql
+```
+
 ### 本地启动
 
-1. 准备 MySQL 与 Redis，依次导入 `src/main/resources/db/hmdp.sql` 和营销模块 V2 迁移脚本。
+1. 准备 MySQL 与 Redis，依次导入 `src/main/resources/db/hmdp.sql`、V2 营销迁移和 V3 异步点赞迁移脚本。
 2. 参考 `.env.example` 配置环境变量，不要把真实密码提交到 Git。
 3. 执行：
 
@@ -121,6 +153,7 @@ mvn clean test
 - 店铺缓存首次未命中时的数据库回源与逻辑缓存初始化。
 - 任务事件业务幂等与进度累加。
 - 异步发券事务的数据库库存扣减和用户券防重。
+- 点赞增量批次首次应用、重复批次幂等和空批次分支。
 
 依赖真实 MySQL/Redis 的数据预热测试已明确标记为手工集成测试，默认不会污染本机环境。
 

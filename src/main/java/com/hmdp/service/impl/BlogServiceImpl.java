@@ -48,6 +48,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     @Resource
     private TaskEventService taskEventService;
 
+    @Resource
+    private BlogLikeRedisService blogLikeRedisService;
+
     @Override
     public Result queryHotBlog(Integer current) {
         Page<Blog> page = query()
@@ -57,6 +60,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         records.forEach(blog -> {
             queryBlogUser(blog);
             isBlogLiked(blog);
+            fillRealTimeLikeCount(blog);
         });
         return Result.ok(records);
     }
@@ -69,27 +73,33 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         }
         queryBlogUser(blog);
         isBlogLiked(blog);
+        fillRealTimeLikeCount(blog);
         return Result.ok(blog);
     }
 
     @Override
     public Result likeBlog(Long id) {
         Long userId = UserHolder.getUser().getId();
-        String key = BLOG_LIKED_KEY + id;
-        Double score = stringRedisTemplate.opsForZSet().score(key, userId.toString());
-        if (score == null) {
-            boolean updated = update().setSql("liked = liked + 1").eq("id", id).update();
-            if (updated) {
-                stringRedisTemplate.opsForZSet().add(key, userId.toString(), System.currentTimeMillis());
-                taskEventService.recordSafely(
-                        userId, MarketingConstants.TASK_LIKE_BLOG, "blog:" + id
-                );
+        BlogLikeRedisService.ToggleResult toggleResult = blogLikeRedisService.toggleLike(id, userId, null);
+
+        if (toggleResult == BlogLikeRedisService.ToggleResult.NEEDS_INITIALIZATION) {
+            // Redis 冷启动后仅首次操作该笔记需要读库，后续点赞请求只执行一次 Lua。
+            Blog persistedBlog = getById(id);
+            if (persistedBlog == null) {
+                return Result.fail("笔记不存在");
             }
-        } else {
-            boolean updated = update().setSql("liked = liked - 1").eq("id", id).gt("liked", 0).update();
-            if (updated) {
-                stringRedisTemplate.opsForZSet().remove(key, userId.toString());
+            Integer initialLiked = persistedBlog.getLiked() == null ? 0 : persistedBlog.getLiked();
+            toggleResult = blogLikeRedisService.toggleLike(id, userId, initialLiked);
+            if (toggleResult == BlogLikeRedisService.ToggleResult.NEEDS_INITIALIZATION) {
+                throw new IllegalStateException("点赞计数初始化失败，请稍后重试");
             }
+        }
+
+        // 营销任务只关心从“未点赞”到“已点赞”的状态变化，取消点赞不产生事件。
+        if (toggleResult == BlogLikeRedisService.ToggleResult.LIKED) {
+            taskEventService.recordSafely(
+                    userId, MarketingConstants.TASK_LIKE_BLOG, "blog:" + id
+            );
         }
         return Result.ok();
     }
@@ -160,6 +170,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         for (Blog blog : blogs) {
             queryBlogUser(blog);
             isBlogLiked(blog);
+            fillRealTimeLikeCount(blog);
         }
 
         ScrollResult result = new ScrollResult();
@@ -185,6 +196,15 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         if (user != null) {
             blog.setName(user.getNickName());
             blog.setIcon(user.getIcon());
+        }
+    }
+
+    /** 数据库异步落库期间，详情页仍展示 Redis 中的实时逻辑点赞数。 */
+    private void fillRealTimeLikeCount(Blog blog) {
+        Long logicalCount = blogLikeRedisService.getLogicalLikeCount(blog.getId());
+        if (logicalCount != null) {
+            long safeCount = Math.max(0L, Math.min(logicalCount, Integer.MAX_VALUE));
+            blog.setLiked((int) safeCount);
         }
     }
 }
