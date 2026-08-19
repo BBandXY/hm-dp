@@ -219,25 +219,40 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
 
     @Override
-    public Result queryShopByType(Integer typeId, Integer current, Double x, Double y) {
-        //判断是否查询
+    public Result queryShopByType(Integer typeId, Integer current, Double x, Double y, String sortBy) {
+        int pageNumber = current == null || current < 1 ? 1 : current;
+
+        // 人气和评分走数据库稳定分页。排序字段使用白名单，避免把前端参数直接拼接进 SQL。
+        boolean sortByComments = "comments".equals(sortBy);
+        boolean sortByScore = "score".equals(sortBy);
+        if (sortByComments || sortByScore) {
+            Page<Shop> page = lambdaQuery()
+                    .eq(Shop::getTypeId, typeId)
+                    .orderByDesc(sortByComments, Shop::getComments)
+                    .orderByDesc(sortByScore, Shop::getScore)
+                    .orderByAsc(Shop::getId)
+                    .page(new Page<>(pageNumber, SystemConstants.DEFAULT_PAGE_SIZE));
+            return Result.ok(page.getRecords());
+        }
+
+        // 未提供坐标时按主键稳定分页，防止相邻页因无 ORDER BY 而产生漂移。
         if (x==null||y==null){
-            // 根据类型分页查询
-            Page<Shop> page = query()
-                    .eq("type_id", typeId)
-                    .page(new Page<>(current, SystemConstants.DEFAULT_PAGE_SIZE));
-            // 返回数据
+            Page<Shop> page = lambdaQuery()
+                    .eq(Shop::getTypeId, typeId)
+                    .orderByAsc(Shop::getId)
+                    .page(new Page<>(pageNumber, SystemConstants.DEFAULT_PAGE_SIZE));
             return Result.ok(page.getRecords());
         }
         //计算分页参数
-        int from = (current - 1) * SystemConstants.DEFAULT_PAGE_SIZE;
-        int end = current * SystemConstants.DEFAULT_PAGE_SIZE;
+        int from = (pageNumber - 1) * SystemConstants.DEFAULT_PAGE_SIZE;
+        int end = pageNumber * SystemConstants.DEFAULT_PAGE_SIZE;
         //查询redis
         String key="shop:geo:"+typeId;
         GeoResults<RedisGeoCommands.GeoLocation<String>> results = stringRedisTemplate.opsForGeo()
                 .search(key, GeoReference.fromCoordinate(x, y),
                         new Distance(5000),
                         RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs().includeDistance()
+                                .sortAscending()
                                 .limit(end)
                 );
         //解析id
